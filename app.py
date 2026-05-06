@@ -3,7 +3,6 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
-import requests
 import streamlit as st
 
 
@@ -23,10 +22,6 @@ st.set_page_config(
 # ===================================================
 
 def get_secret(name: str, default: str = "") -> str:
-    """
-    Safely read from Streamlit secrets first, then environment variables.
-    This keeps the app deployable even before API keys are configured.
-    """
     try:
         if name in st.secrets:
             return st.secrets[name]
@@ -49,7 +44,7 @@ def normalize_lane(origin: str, destination: str) -> str:
 
 
 # ===================================================
-# BRANDING
+# BRANDING + CSS
 # ===================================================
 
 st.markdown(
@@ -105,8 +100,39 @@ st.markdown(
             background-color: #111827;
         }
 
-        section[data-testid="stSidebar"] * {
-            color: white;
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] label {
+            color: white !important;
+        }
+
+        section[data-testid="stSidebar"] input {
+            color: black !important;
+            background-color: white !important;
+        }
+
+        section[data-testid="stSidebar"] textarea {
+            color: black !important;
+            background-color: white !important;
+        }
+
+        section[data-testid="stSidebar"] .stNumberInput input {
+            color: black !important;
+            background-color: white !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background-color: white !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            color: black !important;
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+            color: white !important;
         }
     </style>
     """,
@@ -132,11 +158,12 @@ st.markdown(
 
 
 # ===================================================
-# SIDEBAR CONTROLS
+# SIDEBAR
 # ===================================================
 
 st.sidebar.markdown("## TRT Intermodal")
 st.sidebar.markdown("### Live Data Settings")
+st.sidebar.caption("Monitor truck market conditions and identify intermodal conversion opportunities.")
 
 data_mode = st.sidebar.selectbox(
     "Data source",
@@ -181,15 +208,19 @@ rail_margin_buffer = st.sidebar.number_input(
     help="Use this to account for drayage, lift fees, service variability, or target margin.",
 )
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("### What These Mean")
+st.sidebar.caption(
+    "Savings = adjusted truck rate minus adjusted rail rate. "
+    "High and Medium thresholds control how lanes are ranked."
+)
+
 
 # ===================================================
 # DATA LOADERS
 # ===================================================
 
 def demo_data() -> pd.DataFrame:
-    """
-    Stable starter data. Replace with API returns or uploaded data.
-    """
     return pd.DataFrame(
         {
             "Origin": [
@@ -251,20 +282,14 @@ def uploaded_csv_data() -> pd.DataFrame:
 
 
 def dat_truck_manual_rail_data() -> pd.DataFrame:
-    """
-    DAT has commercial APIs, but endpoint access and payloads depend on the user's subscription.
-    This function is intentionally structured so you can drop in the exact DAT endpoint later.
-    Until then, it lets you enter lanes and rail rates manually while truck rates can be replaced by DAT.
-    """
-
     dat_api_key = get_secret("DAT_API_KEY")
 
     st.warning(
-        "DAT API wiring is ready, but you need a DAT API subscription and endpoint details. "
-        "For now, enter the lane rates below. Once you have the endpoint, replace the placeholder section in the code."
+        "DAT API mode is ready for a future DAT integration. "
+        "For now, edit the table below or upload CSV data."
     )
 
-    with st.expander("Enter lane data", expanded=True):
+    with st.expander("Enter DAT-ready lane data", expanded=True):
         default_df = demo_data()[["Origin", "Destination", "Truck Rate", "Rail Rate", "Truck Miles"]]
         edited = st.data_editor(default_df, num_rows="dynamic", use_container_width=True)
 
@@ -279,19 +304,14 @@ def dat_truck_manual_rail_data() -> pd.DataFrame:
 
 
 def sonar_truck_rail_data() -> pd.DataFrame:
-    """
-    FreightWaves SONAR also requires commercial credentials and specific market/rate tickers.
-    This gives you a clean integration point without breaking the deployed app.
-    """
-
     sonar_api_key = get_secret("SONAR_API_KEY")
 
     st.warning(
-        "SONAR API wiring is ready, but live SONAR calls require your commercial API key and exact ticker/endpoints. "
-        "Use the editable table for now, then drop the API call into this function."
+        "SONAR API mode is ready for a future SONAR integration. "
+        "For now, edit the table below or upload CSV data."
     )
 
-    with st.expander("Enter SONAR-backed lane assumptions", expanded=True):
+    with st.expander("Enter SONAR-ready lane data", expanded=True):
         default_df = demo_data()[["Origin", "Destination", "Truck Rate", "Rail Rate", "Truck Miles"]]
         edited = st.data_editor(default_df, num_rows="dynamic", use_container_width=True)
 
@@ -325,20 +345,24 @@ for column in ["Truck Miles", "Truck Transit Days", "Rail Transit Days"]:
     if column not in df.columns:
         df[column] = None
 
-df["Lane"] = df.apply(lambda row: normalize_lane(row["Origin"], row["Destination"]), axis=1)
+df["Lane"] = df.apply(lambda row: normalize_lane(str(row["Origin"]), str(row["Destination"])), axis=1)
 
-df["Adjusted Truck Rate"] = pd.to_numeric(df["Truck Rate"], errors="coerce") + fuel_adjustment
-df["Adjusted Rail Rate"] = pd.to_numeric(df["Rail Rate"], errors="coerce") + rail_margin_buffer
+df["Truck Rate"] = pd.to_numeric(df["Truck Rate"], errors="coerce").fillna(0)
+df["Rail Rate"] = pd.to_numeric(df["Rail Rate"], errors="coerce").fillna(0)
+df["Truck Miles"] = pd.to_numeric(df["Truck Miles"], errors="coerce")
+
+df["Adjusted Truck Rate"] = df["Truck Rate"] + fuel_adjustment
+df["Adjusted Rail Rate"] = df["Rail Rate"] + rail_margin_buffer
 
 df["Savings"] = df["Adjusted Truck Rate"] - df["Adjusted Rail Rate"]
-df["Savings %"] = df["Savings"] / df["Adjusted Truck Rate"]
+df["Savings %"] = df["Savings"] / df["Adjusted Truck Rate"].replace(0, pd.NA)
 
 df["Conversion Opportunity"] = df["Savings"].apply(
     lambda x: classify_opportunity(x, high_threshold, medium_threshold)
 )
 
-df["Truck RPM"] = df["Adjusted Truck Rate"] / pd.to_numeric(df["Truck Miles"], errors="coerce")
-df["Rail RPM"] = df["Adjusted Rail Rate"] / pd.to_numeric(df["Truck Miles"], errors="coerce")
+df["Truck RPM"] = df["Adjusted Truck Rate"] / df["Truck Miles"]
+df["Rail RPM"] = df["Adjusted Rail Rate"] / df["Truck Miles"]
 
 df["Last Updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -477,7 +501,7 @@ else:
     )
 
     st.markdown(
-        f"""
+        """
         **Suggested commercial action:**  
         Prioritize this lane for shipper conversion outreach. Validate origin/destination drayage,
         rail ramp pairing, service days, equipment availability, and minimum volume commitment.
