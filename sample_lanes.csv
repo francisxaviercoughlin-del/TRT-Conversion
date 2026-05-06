@@ -1,0 +1,8 @@
+Origin,Destination,Lane,Truck_Rate,Rail_Rate,Drayage_Cost,Accessorials,Distance_Miles,Rail_Service_Score,Truck_Capacity_Tightness
+Chicago,Los Angeles,Chicago → Los Angeles,2900,1400,300,150,2015,9,8
+Joliet,Atlanta,Joliet → Atlanta,2200,1100,250,100,720,8,7
+Memphis,Dallas,Memphis → Dallas,850,650,80,50,450,7,4
+Kansas City,Seattle,Kansas City → Seattle,2600,1500,275,125,1800,9,9
+St Louis,Phoenix,St Louis → Phoenix,2400,1450,250,120,1450,8,7
+Chicago,New Jersey,Chicago → New Jersey,3100,1800,350,150,790,8,8
+Dallas,Savannah,Dallas → Savannah,2700,1650,280,130,980,7,8
