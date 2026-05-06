@@ -1,28 +1,59 @@
+# TRT Intermodal Live Truck-to-Rail Conversion App
 
-# Truck-to-Rail Conversion Intelligence MVP
+This Streamlit app flags truck lanes that may be attractive for rail/intermodal conversion.
 
-## Run locally
+## Files
 
-1. Create virtual environment
+- `app.py` — main Streamlit application
+- `requirements.txt` — Python packages needed by Streamlit Cloud
 
-Windows:
-python -m venv venv
+## Deploy on Streamlit Cloud
 
-Mac/Linux:
-python3 -m venv venv
+1. Upload both files to your GitHub repository.
+2. Go to Streamlit Cloud.
+3. Create a new app from your repo.
+4. Set the main file path to:
 
-2. Activate
+```txt
+app.py
+```
 
-Windows:
-venv\Scripts\activate
+## Live Data Setup
 
-Mac/Linux:
-source venv/bin/activate
+The app currently supports:
 
-3. Install requirements
+1. Demo live-ready data
+2. CSV upload
+3. DAT-ready mode
+4. SONAR-ready mode
 
-pip install -r requirements.txt
+To add API keys in Streamlit Cloud:
 
-4. Run app
+```toml
+DAT_API_KEY = "your_dat_key_here"
+SONAR_API_KEY = "your_sonar_key_here"
+```
 
-streamlit run app.py
+## CSV Format
+
+Required columns:
+
+- Origin
+- Destination
+- Truck Rate
+- Rail Rate
+
+Optional columns:
+
+- Truck Miles
+- Truck Transit Days
+- Rail Transit Days
+
+## Next Upgrade
+
+The next step is to replace the placeholder functions:
+
+- `dat_truck_manual_rail_data()`
+- `sonar_truck_rail_data()`
+
+with the exact API endpoint and payload from your DAT or SONAR subscription.
